@@ -1,8 +1,8 @@
-import { safeJsonParse } from '../src';
+import { quietParse } from '../src';
 
-describe('safeJsonParse', () => {
+describe('quietParse', () => {
   it('should parse valid JSON', () => {
-    expect(safeJsonParse('{"name":"ada","n":1}', null)).toEqual({
+    expect(quietParse('{"name":"ada","n":1}', null)).toEqual({
       name: 'ada',
       n: 1,
     });
@@ -12,7 +12,7 @@ describe('safeJsonParse', () => {
     'should return fallback when input is %p',
     (input) => {
       const fallback = { ok: true };
-      expect(safeJsonParse(input, fallback)).toBe(fallback);
+      expect(quietParse(input, fallback)).toBe(fallback);
     },
   );
 
@@ -20,7 +20,7 @@ describe('safeJsonParse', () => {
     const fallback = { ok: false };
     const onError = jest.fn();
 
-    expect(safeJsonParse('{', fallback, onError)).toBe(fallback);
+    expect(quietParse('{', fallback, onError)).toBe(fallback);
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onError.mock.calls[0][0]).toBeInstanceOf(SyntaxError);
   });
@@ -28,9 +28,9 @@ describe('safeJsonParse', () => {
   it('should not call onError for nullish or empty input', () => {
     const onError = jest.fn();
 
-    safeJsonParse(undefined, null, onError);
-    safeJsonParse(null, null, onError);
-    safeJsonParse('', null, onError);
+    quietParse(undefined, null, onError);
+    quietParse(null, null, onError);
+    quietParse('', null, onError);
 
     expect(onError).not.toHaveBeenCalled();
   });
@@ -50,7 +50,7 @@ describe('safeJsonParse', () => {
       '}',
     ].join('');
 
-    expect(safeJsonParse(json, null)).toEqual({
+    expect(quietParse(json, null)).toEqual({
       keep: true,
       nested: {
         keep: true,
@@ -59,8 +59,8 @@ describe('safeJsonParse', () => {
   });
 
   it('should not pollute Object.prototype', () => {
-    const marker = `__safe_json_parse_${Date.now()}`;
-    safeJsonParse(`{"__proto__":{"${marker}":true}}`, null);
+    const marker = `__quiet_parse_${Date.now()}`;
+    quietParse(`{"__proto__":{"${marker}":true}}`, null);
 
     expect(
       Object.prototype.hasOwnProperty.call(Object.prototype, marker),
