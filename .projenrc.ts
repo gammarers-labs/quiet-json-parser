@@ -5,7 +5,7 @@ const project = new typescript.TypeScriptProject({
   repository: 'https://github.com/gammarers-labs/safe-json-parser.git',
   projenrcTs: true,
   defaultReleaseBranch: 'main',
-  releaseToNpm: false,
+  releaseToNpm: true,
   npmTrustedPublishing: false,
   npmAccess: javascript.NpmAccess.PUBLIC,
   typescriptVersion: '6.0.x',
