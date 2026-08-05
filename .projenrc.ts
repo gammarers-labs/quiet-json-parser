@@ -1,8 +1,8 @@
 import { javascript, typescript, github } from 'projen';
 const project = new typescript.TypeScriptProject({
-  name: 'safe-json-parser',
+  name: 'quiet-json-parser',
   packageManager: javascript.NodePackageManager.NPM,
-  repository: 'https://github.com/gammarers-labs/safe-json-parser.git',
+  repository: 'https://github.com/gammarers-labs/quiet-json-parser.git',
   projenrcTs: true,
   defaultReleaseBranch: 'main',
   releaseToNpm: true,
@@ -33,4 +33,5 @@ const project = new typescript.TypeScriptProject({
     ],
   },
 });
+project.addPackageIgnore('/.devcontainer');
 project.synth();

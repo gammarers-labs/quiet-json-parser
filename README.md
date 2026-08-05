@@ -1,9 +1,9 @@
-# Safe Json Parser
+# Quiet Json Parser
 
-[![NpmPackageVersion](https://img.shields.io/npm/v/safe-json-parser)](https://www.npmjs.com/package/safe-json-parser)
-[![NpmPackageDownloads](https://img.shields.io/npm/dm/safe-json-parser)](https://www.npmjs.com/package/safe-json-parser)
-[![Build Status](https://github.com/gammarers-labs/safe-json-parser/actions/workflows/build.yml/badge.svg)](https://github.com/gammarers-labs/safe-json-parser/actions/workflows/build.yml)
-[![GitHub](https://img.shields.io/github/license/gammarers-labs/safe-json-parser)](LICENSE)
+[![NpmPackageVersion](https://img.shields.io/npm/v/quiet-json-parser)](https://www.npmjs.com/package/quiet-json-parser)
+[![NpmPackageDownloads](https://img.shields.io/npm/dm/quiet-json-parser)](https://www.npmjs.com/package/quiet-json-parser)
+[![Build Status](https://github.com/gammarers-labs/quiet-json-parser/actions/workflows/build.yml/badge.svg)](https://github.com/gammarers-labs/quiet-json-parser/actions/workflows/build.yml)
+[![GitHub](https://img.shields.io/github/license/gammarers-labs/quiet-json-parser)](LICENSE)
 
 A small helper to parse JSON strings safely by omitting keys commonly used for prototype pollution, with an optional fallback on invalid or missing input.
 
@@ -19,19 +19,19 @@ A small helper to parse JSON strings safely by omitting keys commonly used for p
 npm:
 
 ```bash
-npm install safe-json-parser
+npm install quiet-json-parser
 ```
 
 yarn:
 
 ```bash
-yarn add safe-json-parser
+yarn add quiet-json-parser
 ```
 
 ## Usage
 
 ```ts
-import { safeJsonParse } from 'safe-json-parser';
+import { quietParse } from 'quiet-json-parser';
 
 interface Config {
   name: string;
@@ -40,22 +40,22 @@ interface Config {
 
 const fallback: Config = { name: 'default', enabled: false };
 
-const config = safeJsonParse<Config>(
+const config = quietParse<Config>(
   '{"name":"ada","enabled":true}',
   fallback,
 );
 
 // Invalid or missing input returns the fallback
-const fromMissing = safeJsonParse(undefined, fallback);
+const fromMissing = quietParse(undefined, fallback);
 
-const fromInvalid = safeJsonParse('{', fallback, (error) => {
+const fromInvalid = quietParse('{', fallback, (error) => {
   console.error('failed to parse config', error);
 });
 ```
 
 ## Options
 
-`safeJsonParse(jsonString, fallback, onError?)`
+`quietParse(jsonString, fallback, onError?)`
 
 | Parameter | Type | Description |
 | --- | --- | --- |

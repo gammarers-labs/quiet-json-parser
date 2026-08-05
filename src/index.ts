@@ -24,7 +24,7 @@ const safeReviver = (key: string, value: unknown) => {
  * @param onError - Optional callback invoked with the caught error on parse failure
  * @returns The parsed value cast to `T`, or `fallback`
  */
-export const safeJsonParse = <T>(
+export const quietParse = <T>(
   jsonString: string | undefined | null,
   fallback: T,
   onError?: (error: unknown) => void,
