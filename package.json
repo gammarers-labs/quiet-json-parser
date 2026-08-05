@@ -1,8 +1,8 @@
 {
-  "name": "safe-json-parser",
+  "name": "quiet-json-parser",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gammarers-labs/safe-json-parser.git"
+    "url": "https://github.com/gammarers-labs/quiet-json-parser.git"
   },
   "scripts": {
     "build": "projen build",
