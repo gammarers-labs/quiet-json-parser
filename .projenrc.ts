@@ -6,7 +6,7 @@ const project = new typescript.TypeScriptProject({
   projenrcTs: true,
   defaultReleaseBranch: 'main',
   releaseToNpm: true,
-  npmTrustedPublishing: false,
+  npmTrustedPublishing: true,
   npmAccess: javascript.NpmAccess.PUBLIC,
   typescriptVersion: '6.0.x',
   minNodeVersion: '20.0.0',
