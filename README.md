@@ -9,7 +9,7 @@ A small helper to parse and stringify JSON safely by omitting keys commonly used
 
 ## Features
 
-- Parse JSON with a reviver that drops `__proto__`, `constructor`, and `prototype` keys (including nested ones)
+- Parse JSON while dropping `__proto__` and `prototype` keys, and dropping `constructor` only when its value is an object that contains `prototype`
 - Stringify values with a replacer that drops the same keys
 - Return a fallback value for nullish, empty, or invalid JSON input, and for stringify failures
 - Optional `onError` callback for parse or stringify failures
@@ -83,7 +83,7 @@ Returns the parsed value cast to `T`, or `fallback`. The result is not schema-va
 | `fallback` | `string` | Value returned when serialization throws or yields a non-string (`undefined`, functions, symbols). |
 | `onError` | `(error: unknown) => void` (optional) | Called with the caught error when `JSON.stringify` throws. Not called when the result is not a string. |
 
-Returns the JSON string, or `fallback`. `__proto__`, `constructor`, and `prototype` keys are omitted.
+Returns the JSON string, or `fallback`. `__proto__` and `prototype` keys are omitted. A `constructor` key is omitted only when its value is an object that contains `prototype`.
 
 ## Requirements
 

@@ -35,7 +35,7 @@ describe('quietParse', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it('should omit __proto__, constructor, and prototype keys', () => {
+  it('should omit __proto__, prototype, and constructor.prototype only', () => {
     const json = [
       '{',
       '"keep":true,',
@@ -45,15 +45,20 @@ describe('quietParse', () => {
       '"nested":{',
       '"keep":true,',
       '"__proto__":{"polluted":true},',
-      '"constructor":{"prototype":{"y":2}}',
+      '"constructor":{"prototype":{"y":2},"name":"x"},',
+      '"role":{"constructor":{"title":"Engineer"}}',
       '}',
       '}',
     ].join('');
 
     expect(quietParse(json, null)).toEqual({
       keep: true,
+      constructor: 'Engineer',
       nested: {
         keep: true,
+        role: {
+          constructor: { title: 'Engineer' },
+        },
       },
     });
   });
@@ -66,6 +71,24 @@ describe('quietParse', () => {
       Object.prototype.hasOwnProperty.call(Object.prototype, marker),
     ).toBe(false);
     expect(({} as Record<string, unknown>)[marker]).toBeUndefined();
+  });
+
+  it('should omit constructor.prototype without leaving an empty constructor', () => {
+    expect(
+      quietParse('{"constructor":{"prototype":{"y":2}}}', null),
+    ).toEqual({});
+  });
+
+  it('should keep constructor values that are not objects with prototype', () => {
+    expect(quietParse('{"constructor":null}', null)).toEqual({
+      constructor: null,
+    });
+    expect(quietParse('{"constructor":["Engineer"]}', null)).toEqual({
+      constructor: ['Engineer'],
+    });
+    expect(quietParse('{"constructor":{}}', null)).toEqual({
+      constructor: {},
+    });
   });
 });
 
@@ -110,14 +133,17 @@ describe('quietStringify', () => {
     expect(onError.mock.calls[0][0]).toBeInstanceOf(TypeError);
   });
 
-  it('should omit __proto__, constructor, and prototype keys', () => {
+  it('should omit __proto__, prototype, and constructor.prototype only', () => {
     const value = {
       keep: true,
       constructor: 'Engineer',
       prototype: { x: 1 },
       nested: {
         keep: true,
-        constructor: { prototype: { y: 2 } },
+        constructor: { prototype: { y: 2 }, name: 'x' },
+        role: {
+          constructor: { title: 'Engineer' },
+        },
       },
     };
     Object.defineProperty(value, '__proto__', {
@@ -128,8 +154,12 @@ describe('quietStringify', () => {
 
     expect(JSON.parse(quietStringify(value, 'null'))).toEqual({
       keep: true,
+      constructor: 'Engineer',
       nested: {
         keep: true,
+        role: {
+          constructor: { title: 'Engineer' },
+        },
       },
     });
   });

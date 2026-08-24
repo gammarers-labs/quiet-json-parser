@@ -1,21 +1,81 @@
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
 /**
- * JSON.parse reviver / JSON.stringify replacer that drops keys commonly used
- * for prototype pollution. Omits `__proto__`, `constructor`, and `prototype`
- * (including nested ones).
+ * True when a `constructor` value is the dangerous `{ prototype: ... }` shape.
  *
- * @param key - Property name visited by JSON.parse or JSON.stringify
- * @param value - Property value visited by JSON.parse or JSON.stringify
+ * @param value - Candidate `constructor` property value
+ * @returns Whether the value is a plain object with an own `prototype` key
+ */
+const isUnsafeConstructorValue = (value: unknown): boolean => {
+  if (!isPlainObject(value)) {
+    return false;
+  }
+  return Object.prototype.hasOwnProperty.call(value, 'prototype');
+};
+
+/**
+ * Whether a property should be omitted to avoid prototype pollution.
+ *
+ * @param key - Property name
+ * @param value - Property value (used to detect `constructor.prototype`)
+ * @returns `true` when the property should be dropped
+ */
+const shouldOmitKey = (key: string, value: unknown): boolean => {
+  if (key === '__proto__' || key === 'prototype') {
+    return true;
+  }
+  if (key !== 'constructor') {
+    return false;
+  }
+  return isUnsafeConstructorValue(value);
+};
+
+/**
+ * JSON.stringify replacer that drops prototype-pollution-prone keys.
+ *
+ * @param key - Property name visited by JSON.stringify
+ * @param value - Property value visited by JSON.stringify
  * @returns The original value, or `undefined` to omit the property
  */
 const omitUnsafeKey = (key: string, value: unknown) => {
-  if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+  if (shouldOmitKey(key, value)) {
     return undefined;
   }
   return value;
 };
 
 /**
- * Parses a JSON string while omitting prototype-pollution-prone keys.
+ * Drops prototype-pollution-prone keys from a parsed JSON value.
+ * Inspects each object before recursing so `constructor.prototype` is still
+ * visible (JSON.parse revivers run inside-out and would strip `prototype` first).
+ *
+ * @param value - Parsed JSON value
+ * @returns A copy with unsafe keys omitted
+ */
+const omitUnsafeDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(omitUnsafeDeep);
+  }
+  if (!isPlainObject(value)) {
+    return value;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(value)) {
+    const nested = value[key];
+    if (shouldOmitKey(key, nested)) {
+      continue;
+    }
+    result[key] = omitUnsafeDeep(nested);
+  }
+  return result;
+};
+
+/**
+ * Parses a JSON string while omitting prototype-pollution-prone keys
+ * (`__proto__`, `prototype`, and `constructor` only when it contains `prototype`).
  * Returns `fallback` when the input is nullish/empty or parsing fails.
  * Does not validate that the parsed value matches `T` at runtime.
  *
@@ -34,7 +94,8 @@ export const quietParse = <T>(
     return fallback;
   }
   try {
-    return JSON.parse(jsonString, omitUnsafeKey) as T;
+    const parsed: unknown = JSON.parse(jsonString);
+    return omitUnsafeDeep(parsed) as T;
   } catch (error) {
     onError?.(error);
     return fallback;
@@ -42,7 +103,8 @@ export const quietParse = <T>(
 };
 
 /**
- * Stringifies a value while omitting prototype-pollution-prone keys.
+ * Stringifies a value while omitting prototype-pollution-prone keys
+ * (`__proto__`, `prototype`, and `constructor` only when it contains `prototype`).
  * Returns `fallback` when the value cannot be serialized (circular refs, BigInt,
  * throwing `toJSON`, or a result that is not a string such as `undefined`).
  *
