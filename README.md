@@ -1,11 +1,11 @@
 # Quiet Json Parser
 
-[![NpmPackageVersion](https://img.shields.io/npm/v/quiet-json-parser)](https://www.npmjs.com/package/quiet-json-parser)
-[![NpmPackageDownloads](https://img.shields.io/npm/dm/quiet-json-parser)](https://www.npmjs.com/package/quiet-json-parser)
-[![Build Status](https://github.com/gammarers-labs/quiet-json-parser/actions/workflows/build.yml/badge.svg)](https://github.com/gammarers-labs/quiet-json-parser/actions/workflows/build.yml)
-[![GitHub](https://img.shields.io/github/license/gammarers-labs/quiet-json-parser)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/quiet-json-parser?style=flat-square)](https://www.npmjs.com/package/quiet-json-parser)
+[![license](https://img.shields.io/npm/l/quiet-json-parser?style=flat-square)](https://www.npmjs.com/package/quiet-json-parser)
+[![Node.js](https://img.shields.io/node/v/quiet-json-parser?style=flat-square)](https://www.npmjs.com/package/quiet-json-parser)
+[![build](https://img.shields.io/github/actions/workflow/status/gammarers-labs/quiet-json-parser/build.yml?label=build&style=flat-square)](https://github.com/gammarers-labs/quiet-json-parser/actions/workflows/build.yml)
 
-A small helper to parse and stringify JSON safely by omitting keys commonly used for prototype pollution, with an optional fallback on invalid input or serialization failure.
+A small helper to parse and stringify JSON safely by omitting keys commonly used for prototype pollution. Invalid input and serialization failures return a fallback, and parse results can be checked at runtime with an optional type guard.
 
 ## Features
 
@@ -13,20 +13,27 @@ A small helper to parse and stringify JSON safely by omitting keys commonly used
 - Stringify values with a replacer that drops the same keys
 - Return a fallback value for nullish, empty, or invalid JSON input, and for stringify failures
 - Optional `onError` callback for parse or stringify failures
-- TypeScript generics for compile-time typing (not validated at runtime)
+- Optional `validate` for `quietParse` (type guard or predicate); mismatch returns `fallback`
+- TypeScript generics; runtime shape is checked only when `validate` is provided
 
 ## Installation
 
-npm:
+### npm
 
 ```bash
 npm install quiet-json-parser
 ```
 
-yarn:
+### yarn
 
 ```bash
 yarn add quiet-json-parser
+```
+
+### pnpm
+
+```bash
+pnpm add quiet-json-parser
 ```
 
 ## Usage
@@ -41,21 +48,23 @@ interface Config {
 
 const fallback: Config = { name: 'default', enabled: false };
 
-const config = quietParse<Config>(
+const config = quietParse(
   '{"name":"ada","enabled":true}',
   fallback,
 );
 
-// Invalid or missing input returns the fallback
+const json = quietStringify(config, '{}');
+```
+
+Invalid or missing input returns the fallback. Pass `onError` to observe parse or stringify failures:
+
+```ts
 const fromMissing = quietParse(undefined, fallback);
 
 const fromInvalid = quietParse('{', fallback, (error) => {
   console.error('failed to parse config', error);
 });
 
-const json = quietStringify(config, '{}');
-
-// Circular references or BigInt values return the fallback
 const circular: Record<string, unknown> = { name: 'ada' };
 circular.self = circular;
 const fromCircular = quietStringify(circular, '{}', (error) => {
@@ -63,17 +72,51 @@ const fromCircular = quietStringify(circular, '{}', (error) => {
 });
 ```
 
+Pass `validate` to check the sanitized parse result at runtime. On mismatch, `quietParse` returns `fallback` and calls `onError` with `QuietJsonParserValidateError`:
+
+```ts
+import { QuietJsonParserValidateError, quietParse } from 'quiet-json-parser';
+
+const isConfig = (value: unknown): value is Config => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  if (!('name' in value) || !('enabled' in value)) {
+    return false;
+  }
+  return typeof value.name === 'string' && typeof value.enabled === 'boolean';
+};
+
+const fromValidated = quietParse('{"name":"ada"}', fallback, {
+  validate: isConfig,
+  onError: (error) => {
+    if (error instanceof QuietJsonParserValidateError) {
+      console.error('config shape mismatch');
+      return;
+    }
+    console.error('failed to parse config', error);
+  },
+});
+```
+
 ## Options
 
-`quietParse(jsonString, fallback, onError?)`
+`quietParse(jsonString, fallback, onErrorOrOptions?)`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `jsonString` | `string \| undefined \| null` | JSON text to parse. Nullish or empty values skip parsing and return `fallback`. |
-| `fallback` | `T` | Value returned when input is missing/empty or parsing fails. |
-| `onError` | `(error: unknown) => void` (optional) | Called with the caught error when `JSON.parse` throws. Not called for nullish/empty input. |
+| `fallback` | `T` | Value returned when input is missing/empty, parsing fails, or `validate` rejects the value. |
+| `onErrorOrOptions` | `((error: unknown) => void) \| QuietParseOptions<T>` (optional) | A callback invoked on parse or validation failure, or an options object. |
 
-Returns the parsed value cast to `T`, or `fallback`. The result is not schema-validated at runtime.
+`QuietParseOptions<T>`
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `validate` | `(value: unknown) => boolean` (optional) | Type guard or predicate run on the sanitized parse result. Schema libraries can wrap `safeParse`. On `false`, `onError` receives `QuietJsonParserValidateError` and the function returns `fallback`. If the function throws, the thrown value is passed to `onError`. Not called for nullish/empty input or `JSON.parse` failures. |
+| `onError` | `(error: unknown) => void` (optional) | Called when `JSON.parse` throws, when `validate` throws, or with `QuietJsonParserValidateError` when `validate` returns `false`. Not called for nullish/empty input. |
+
+Returns the parsed value as `T`, or `fallback`. Runtime shape is checked only when `validate` is provided. When inspecting errors, check `QuietJsonParserValidateError` before `QuietJsonParserError`.
 
 `quietStringify(value, fallback, onError?)`
 
