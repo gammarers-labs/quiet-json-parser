@@ -13,7 +13,7 @@ interface Config {
 const configFallback: Config = { name: 'default', enabled: false };
 
 const isConfig = (value: unknown): value is Config => {
-  if (typeof value !== 'object' || value === null) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
   if (!('name' in value) || !('enabled' in value)) {

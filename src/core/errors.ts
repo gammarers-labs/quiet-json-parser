@@ -4,7 +4,7 @@
 export abstract class QuietJsonParserError extends Error {
   override readonly name: string = 'QuietJsonParserError';
 
-  constructor(message: string) {
+  protected constructor(message: string) {
     super(message);
     Object.setPrototypeOf(this, QuietJsonParserError.prototype);
   }
