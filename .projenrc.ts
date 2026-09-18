@@ -1,37 +1,11 @@
-import { javascript, typescript, github } from 'projen';
-const project = new typescript.TypeScriptProject({
+import { ProjenTypeScriptProject } from '@gammarers/projen-projects';
+const project = new ProjenTypeScriptProject({
   name: 'quiet-json-parser',
-  packageManager: javascript.NodePackageManager.NPM,
   repository: 'https://github.com/gammarers-labs/quiet-json-parser.git',
-  projenrcTs: true,
-  defaultReleaseBranch: 'main',
   releaseToNpm: true,
-  npmTrustedPublishing: true,
-  npmAccess: javascript.NpmAccess.PUBLIC,
-  typescriptVersion: '6.0.x',
-  minNodeVersion: '20.0.0',
-  workflowNodeVersion: '24.x',
-  depsUpgradeOptions: {
-    workflowOptions: {
-      labels: ['auto-approve', 'auto-merge'],
-      schedule: javascript.UpgradeDependenciesSchedule.WEEKLY,
-    },
-  },
-  githubOptions: {
-    projenCredentials: github.GithubCredentials.fromApp({
-      permissions: {
-        pullRequests: github.workflows.AppPermission.WRITE,
-        contents: github.workflows.AppPermission.WRITE,
-        workflows: github.workflows.AppPermission.WRITE,
-      },
-    }),
-  },
-  autoApproveOptions: {
-    allowedUsernames: [
-      'gammarers-projen-upgrade-bot[bot]',
-      'yicr',
-    ],
-  },
+  devDeps: [
+    '@gammarers/projen-projects@^0.3.0',
+  ],
 });
 project.addPackageIgnore('/.devcontainer');
 project.synth();
