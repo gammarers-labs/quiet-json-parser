@@ -3,6 +3,12 @@ const PROTO_KEY = '__proto__';
 const PROTOTYPE_KEY = 'prototype';
 const CONSTRUCTOR_KEY = 'constructor';
 
+/**
+ * True when the value is a non-null object that is not an array.
+ *
+ * @param value - Candidate JSON value
+ * @returns Whether the value is a plain object
+ */
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
