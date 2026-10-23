@@ -1,5 +1,6 @@
 {
   "name": "quiet-json-parser",
+  "description": "Parse and stringify JSON safely by omitting prototype-pollution keys, with fallbacks and optional runtime validation.",
   "repository": {
     "type": "git",
     "url": "https://github.com/gammarers-labs/quiet-json-parser.git"

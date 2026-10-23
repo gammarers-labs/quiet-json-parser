@@ -26,13 +26,14 @@ export interface QuietParseOptions<T> {
   readonly fallback: T;
   /**
    * Runtime check run on the sanitized parse result.
-   * On `false`, `onError` receives `QuietJsonParserValidateError` and `fallback` is returned.
+   * On `false`, `onError` receives {@link QuietJsonParserValidateError} and `fallback` is returned.
    * If this function throws, the thrown value is passed to `onError`.
    */
   readonly validate?: QuietParseValidate<T>;
   /**
    * Called when `JSON.parse` throws, when `validate` throws, or when `validate`
    * returns `false`. Not called for nullish or empty input.
+   * See {@link QuietJsonParserOnError}.
    */
   readonly onError?: QuietJsonParserOnError;
 }

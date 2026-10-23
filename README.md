@@ -12,9 +12,11 @@ A small helper to parse and stringify JSON safely by omitting keys commonly used
 - Parse JSON while dropping `__proto__` and `prototype` keys, and dropping `constructor` only when its value is an object that contains `prototype`
 - Stringify values with a replacer that drops the same keys
 - Return a fallback value for nullish, empty, or invalid JSON input, and for stringify failures
+- Options objects (`QuietParseOptions` / `QuietStringifyOptions`) as the preferred API, with room to grow
 - Optional `onError` callback for parse or stringify failures
 - Optional `validate` for `quietParse` (type guard or predicate); mismatch returns `fallback`
 - TypeScript generics; runtime shape is checked only when `validate` is provided
+- Positional `(value, fallback, onError?)` overloads remain available for compatibility
 
 ## Installation
 
@@ -48,27 +50,30 @@ interface Config {
 
 const fallback: Config = { name: 'default', enabled: false };
 
-const config = quietParse(
-  '{"name":"ada","enabled":true}',
-  fallback,
-);
+const config = quietParse('{"name":"ada","enabled":true}', { fallback });
 
-const json = quietStringify(config, '{}');
+const json = quietStringify(config, { fallback: '{}' });
 ```
 
 Invalid or missing input returns the fallback. Pass `onError` to observe parse or stringify failures:
 
 ```ts
-const fromMissing = quietParse(undefined, fallback);
+const fromMissing = quietParse(undefined, { fallback });
 
-const fromInvalid = quietParse('{', fallback, (error) => {
-  console.error('failed to parse config', error);
+const fromInvalid = quietParse('{', {
+  fallback,
+  onError: (error) => {
+    console.error('failed to parse config', error);
+  },
 });
 
 const circular: Record<string, unknown> = { name: 'ada' };
 circular.self = circular;
-const fromCircular = quietStringify(circular, '{}', (error) => {
-  console.error('failed to stringify config', error);
+const fromCircular = quietStringify(circular, {
+  fallback: '{}',
+  onError: (error) => {
+    console.error('failed to stringify config', error);
+  },
 });
 ```
 
@@ -87,7 +92,8 @@ const isConfig = (value: unknown): value is Config => {
   return typeof value.name === 'string' && typeof value.enabled === 'boolean';
 };
 
-const fromValidated = quietParse('{"name":"ada"}', fallback, {
+const fromValidated = quietParse('{"name":"ada"}', {
+  fallback,
   validate: isConfig,
   onError: (error) => {
     if (error instanceof QuietJsonParserValidateError) {
@@ -99,32 +105,53 @@ const fromValidated = quietParse('{"name":"ada"}', fallback, {
 });
 ```
 
+Positional arguments still work:
+
+```ts
+quietParse('{', fallback, (error) => {
+  console.error(error);
+});
+quietStringify(circular, '{}', (error) => {
+  console.error(error);
+});
+```
+
 ## Options
 
-`quietParse(jsonString, fallback, onErrorOrOptions?)`
+`quietParse(jsonString, options)` (preferred)
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `jsonString` | `string \| undefined \| null` | JSON text to parse. Nullish or empty values skip parsing and return `fallback`. |
-| `fallback` | `T` | Value returned when input is missing/empty, parsing fails, or `validate` rejects the value. |
-| `onErrorOrOptions` | `((error: unknown) => void) \| QuietParseOptions<T>` (optional) | A callback invoked on parse or validation failure, or an options object. |
+| `options` | `QuietParseOptions<T>` | Parse settings. `fallback` is required. |
 
 `QuietParseOptions<T>`
 
 | Option | Type | Description |
 | --- | --- | --- |
+| `fallback` | `T` | Value returned when input is missing/empty, parsing fails, or `validate` rejects the value. |
 | `validate` | `(value: unknown) => boolean` (optional) | Type guard or predicate run on the sanitized parse result. Schema libraries can wrap `safeParse`. On `false`, `onError` receives `QuietJsonParserValidateError` and the function returns `fallback`. If the function throws, the thrown value is passed to `onError`. Not called for nullish/empty input or `JSON.parse` failures. |
-| `onError` | `(error: unknown) => void` (optional) | Called when `JSON.parse` throws, when `validate` throws, or with `QuietJsonParserValidateError` when `validate` returns `false`. Not called for nullish/empty input. |
+| `onError` | `QuietJsonParserOnError` (optional) | Called when `JSON.parse` throws, when `validate` throws, or with `QuietJsonParserValidateError` when `validate` returns `false`. Not called for nullish/empty input. |
+
+`quietParse(jsonString, fallback, onErrorOrOptions?)` remains supported. The third argument may be an `onError` callback or `{ validate?, onError? }` (`QuietParseExtraOptions`).
 
 Returns the parsed value as `T`, or `fallback`. Runtime shape is checked only when `validate` is provided. When inspecting errors, check `QuietJsonParserValidateError` before `QuietJsonParserError`.
 
-`quietStringify(value, fallback, onError?)`
+`quietStringify(value, options)` (preferred)
 
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `value` | `unknown` | Value to serialize. |
+| `options` | `QuietStringifyOptions` | Stringify settings. `fallback` is required. |
+
+`QuietStringifyOptions`
+
+| Option | Type | Description |
+| --- | --- | --- |
 | `fallback` | `string` | Value returned when serialization throws or yields a non-string (`undefined`, functions, symbols). |
-| `onError` | `(error: unknown) => void` (optional) | Called with the caught error when `JSON.stringify` throws. Not called when the result is not a string. |
+| `onError` | `QuietJsonParserOnError` (optional) | Called with the caught error when `JSON.stringify` throws. Not called when the result is not a string. |
+
+`quietStringify(value, fallback, onError?)` remains supported.
 
 Returns the JSON string, or `fallback`. `__proto__` and `prototype` keys are omitted. A `constructor` key is omitted only when its value is an object that contains `prototype`.
 

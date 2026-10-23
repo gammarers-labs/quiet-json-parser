@@ -14,6 +14,7 @@ export interface QuietStringifyOptions {
   /**
    * Called with the caught error when `JSON.stringify` throws.
    * Not called when the result is not a string.
+   * See {@link QuietJsonParserOnError}.
    */
   readonly onError?: QuietJsonParserOnError;
 }

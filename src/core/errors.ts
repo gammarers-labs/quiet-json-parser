@@ -13,7 +13,7 @@ export abstract class QuietJsonParserError extends Error {
 const VALIDATE_MISMATCH_MESSAGE = 'Parsed JSON did not match the expected shape';
 
 /**
- * Passed to `onError` when parsed JSON does not match `validate`.
+ * Passed to {@link QuietJsonParserOnError} when parsed JSON does not match `validate`.
  * Does not include the rejected value, to avoid leaking data through logs.
  */
 export class QuietJsonParserValidateError extends QuietJsonParserError {
