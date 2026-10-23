@@ -20,11 +20,16 @@ export type QuietParseOnError = (error: unknown) => void;
 export type QuietParseValidate<T> = ((value: unknown) => value is T) | ((value: unknown) => boolean);
 
 /**
- * Optional settings for `quietParse`.
+ * Settings for `quietParse`. Prefer this object form so future options
+ * (reviver, omit keys, depth limits, and similar) can be added without new positional args.
  *
  * @typeParam T - Expected result type
  */
 export interface QuietParseOptions<T> {
+  /**
+   * Value returned for missing input, parse errors, or validation failure.
+   */
+  readonly fallback: T;
   /**
    * Runtime check run on the sanitized parse result.
    * On `false`, `onError` receives `QuietJsonParserValidateError` and `fallback` is returned.
@@ -39,20 +44,72 @@ export interface QuietParseOptions<T> {
 }
 
 /**
- * Normalize the third `quietParse` argument: a callback stays `onError`,
- * an object is treated as options.
+ * Options for the positional third argument (without `fallback`).
  *
  * @typeParam T - Expected result type
- * @param onErrorOrOptions - Legacy `onError` callback or an options object
- * @returns Options with `validate` and `onError` resolved
+ */
+export type QuietParseExtraOptions<T> = Omit<QuietParseOptions<T>, 'fallback'>;
+
+/**
+ * Whether the second argument is an options object (has a `fallback` property).
+ *
+ * @param value - Second argument to `quietParse`
+ * @returns `true` when `value` looks like {@link QuietParseOptions}
+ */
+const isParseOptions = <T>(value: unknown): value is QuietParseOptions<T> => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  return 'fallback' in value;
+};
+
+/**
+ * Resolve positional or options-object arguments into {@link QuietParseOptions}.
+ *
+ * @typeParam T - Expected result type
+ * @param fallbackOrOptions - Fallback value, or a full options object
+ * @param onErrorOrOptions - Legacy `onError` callback, or extra options without `fallback`
+ * @returns Normalized options including `fallback`
  */
 const toParseOptions = <T>(
-  onErrorOrOptions?: QuietParseOnError | QuietParseOptions<T>,
+  fallbackOrOptions: T | QuietParseOptions<T>,
+  onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
 ): QuietParseOptions<T> => {
-  if (typeof onErrorOrOptions === 'function') {
-    return { onError: onErrorOrOptions };
+  if (isParseOptions<T>(fallbackOrOptions)) {
+    return fallbackOrOptions;
   }
-  return onErrorOrOptions ?? {};
+
+  if (typeof onErrorOrOptions === 'function') {
+    return { fallback: fallbackOrOptions, onError: onErrorOrOptions };
+  }
+
+  return { fallback: fallbackOrOptions, ...onErrorOrOptions };
+};
+
+type QuietParseOverload = {
+  /**
+   * Parses JSON using an options object (`fallback` required).
+   *
+   * @typeParam T - Expected result type
+   * @param jsonString - JSON text to parse, or nullish/empty to skip parsing
+   * @param options - Parse options including `fallback`
+   * @returns The parsed value as `T`, or `fallback`
+   */
+  <T>(jsonString: string | undefined | null, options: QuietParseOptions<T>): T;
+  /**
+   * Parses JSON with a positional `fallback` (and optional `onError` or extra options).
+   *
+   * @typeParam T - Expected result type
+   * @param jsonString - JSON text to parse, or nullish/empty to skip parsing
+   * @param fallback - Value returned for missing input, parse errors, or validation failure
+   * @param onErrorOrOptions - Optional `onError` callback, or options with `validate` and `onError`
+   * @returns The parsed value as `T`, or `fallback`
+   */
+  <T>(
+    jsonString: string | undefined | null,
+    fallback: T,
+    onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
+  ): T;
 };
 
 /**
@@ -61,18 +118,15 @@ const toParseOptions = <T>(
  * Returns `fallback` when the input is nullish/empty, parsing fails, or `validate`
  * rejects the parsed value. Shape is checked at runtime only when `validate` is set.
  *
- * @typeParam T - Expected result type (runtime-checked only when `validate` is set)
- * @param jsonString - JSON text to parse, or nullish/empty to skip parsing
- * @param fallback - Value returned for missing input, parse errors, or validation failure
- * @param onErrorOrOptions - Optional `onError` callback, or options with `validate` and `onError`
- * @returns The parsed value as `T`, or `fallback`
+ * Prefer {@link QuietParseOptions} so the API can grow without new positional parameters.
+ * The positional `(jsonString, fallback, onErrorOrOptions?)` form remains supported.
  */
-export const quietParse = <T>(
+export const quietParse: QuietParseOverload = <T>(
   jsonString: string | undefined | null,
-  fallback: T,
-  onErrorOrOptions?: QuietParseOnError | QuietParseOptions<T>,
+  fallbackOrOptions: T | QuietParseOptions<T>,
+  onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
 ): T => {
-  const { validate, onError } = toParseOptions(onErrorOrOptions);
+  const { fallback, validate, onError } = toParseOptions(fallbackOrOptions, onErrorOrOptions);
 
   if (!jsonString) {
     return fallback;
