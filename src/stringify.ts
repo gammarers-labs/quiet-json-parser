@@ -1,11 +1,5 @@
 import { omitUnsafeKey } from './core/omit-unsafe';
-
-/**
- * Callback invoked when stringification throws.
- *
- * @param error - The caught error from `JSON.stringify`
- */
-export type QuietStringifyOnError = (error: unknown) => void;
+import type { QuietJsonParserOnError } from './core/on-error';
 
 /**
  * Settings for `quietStringify`. Prefer this object form so future options
@@ -21,7 +15,7 @@ export interface QuietStringifyOptions {
    * Called with the caught error when `JSON.stringify` throws.
    * Not called when the result is not a string.
    */
-  readonly onError?: QuietStringifyOnError;
+  readonly onError?: QuietJsonParserOnError;
 }
 
 /**
@@ -33,7 +27,7 @@ export interface QuietStringifyOptions {
  */
 const toStringifyOptions = (
   fallbackOrOptions: string | QuietStringifyOptions,
-  onError?: QuietStringifyOnError,
+  onError?: QuietJsonParserOnError,
 ): QuietStringifyOptions => {
   if (typeof fallbackOrOptions === 'string') {
     return { fallback: fallbackOrOptions, onError };
@@ -58,7 +52,7 @@ type QuietStringifyOverload = {
    * @param onError - Optional callback invoked with the caught error on stringify failure
    * @returns The JSON string, or `fallback`
    */
-  (value: unknown, fallback: string, onError?: QuietStringifyOnError): string;
+  (value: unknown, fallback: string, onError?: QuietJsonParserOnError): string;
 };
 
 /**
@@ -73,7 +67,7 @@ type QuietStringifyOverload = {
 export const quietStringify: QuietStringifyOverload = (
   value: unknown,
   fallbackOrOptions: string | QuietStringifyOptions,
-  onError?: QuietStringifyOnError,
+  onError?: QuietJsonParserOnError,
 ): string => {
   const { fallback, onError: reportError } = toStringifyOptions(fallbackOrOptions, onError);
 

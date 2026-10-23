@@ -1,12 +1,6 @@
 import { QuietJsonParserValidateError } from './core/errors';
 import { omitUnsafeDeep } from './core/omit-unsafe';
-
-/**
- * Callback invoked when parsing or validation fails.
- *
- * @param error - The caught error, or a `QuietJsonParserValidateError` on shape mismatch
- */
-export type QuietParseOnError = (error: unknown) => void;
+import type { QuietJsonParserOnError } from './core/on-error';
 
 /**
  * Runtime check for a parsed JSON value.
@@ -40,7 +34,7 @@ export interface QuietParseOptions<T> {
    * Called when `JSON.parse` throws, when `validate` throws, or when `validate`
    * returns `false`. Not called for nullish or empty input.
    */
-  readonly onError?: QuietParseOnError;
+  readonly onError?: QuietJsonParserOnError;
 }
 
 /**
@@ -73,7 +67,7 @@ const isParseOptions = <T>(value: unknown): value is QuietParseOptions<T> => {
  */
 const toParseOptions = <T>(
   fallbackOrOptions: T | QuietParseOptions<T>,
-  onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
+  onErrorOrOptions?: QuietJsonParserOnError | QuietParseExtraOptions<T>,
 ): QuietParseOptions<T> => {
   if (isParseOptions<T>(fallbackOrOptions)) {
     return fallbackOrOptions;
@@ -108,7 +102,7 @@ type QuietParseOverload = {
   <T>(
     jsonString: string | undefined | null,
     fallback: T,
-    onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
+    onErrorOrOptions?: QuietJsonParserOnError | QuietParseExtraOptions<T>,
   ): T;
 };
 
@@ -124,7 +118,7 @@ type QuietParseOverload = {
 export const quietParse: QuietParseOverload = <T>(
   jsonString: string | undefined | null,
   fallbackOrOptions: T | QuietParseOptions<T>,
-  onErrorOrOptions?: QuietParseOnError | QuietParseExtraOptions<T>,
+  onErrorOrOptions?: QuietJsonParserOnError | QuietParseExtraOptions<T>,
 ): T => {
   const { fallback, validate, onError } = toParseOptions(fallbackOrOptions, onErrorOrOptions);
 
