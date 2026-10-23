@@ -202,6 +202,32 @@ describe('quietParse', () => {
       enabled: true,
     });
   });
+
+  it('should accept QuietParseOptions as the second argument', () => {
+    const onError = jest.fn();
+
+    expect(
+      quietParse('{"name":"ada","enabled":true}', {
+        fallback: configFallback,
+        validate: isConfig,
+        onError,
+      }),
+    ).toEqual({ name: 'ada', enabled: true });
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('should use options.fallback and onError when parse fails', () => {
+    const onError = jest.fn();
+
+    expect(
+      quietParse('{', {
+        fallback: configFallback,
+        onError,
+      }),
+    ).toBe(configFallback);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(SyntaxError);
+  });
 });
 
 describe('QuietJsonParserValidateError', () => {
@@ -286,5 +312,26 @@ describe('quietStringify', () => {
         },
       },
     });
+  });
+
+  it('should accept QuietStringifyOptions as the second argument', () => {
+    const onError = jest.fn();
+    const circular: Record<string, unknown> = { name: 'ada' };
+    circular.self = circular;
+
+    expect(
+      quietStringify(circular, {
+        fallback: '{"ok":false}',
+        onError,
+      }),
+    ).toBe('{"ok":false}');
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(TypeError);
+  });
+
+  it('should stringify with options.fallback on success', () => {
+    expect(quietStringify({ name: 'ada' }, { fallback: '{}' })).toBe(
+      '{"name":"ada"}',
+    );
   });
 });
