@@ -38,6 +38,8 @@ describe('composeReplacer', () => {
 
   it('should keep listed object keys, drop unsafe keys, and keep array elements', () => {
     const listed: readonly unknown[] = ['b', new String('a'), 2, new Number(1), true];
+    // QuietStringifyReplacer accepts only string | number.
+    // Boxed String and Number objects, and other values, are passed to lock the runtime ignore rule shared with JSON.stringify.
     const replacer = composeReplacer(listed as readonly (string | number)[]);
 
     expect(JSON.parse(JSON.stringify({
