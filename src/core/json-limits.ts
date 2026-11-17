@@ -27,6 +27,13 @@ const IDLE_SCAN: NestingScan = {
 const INVALID_MAX_DEPTH = 'maxDepth must be a non-negative integer';
 const INVALID_MAX_BYTES = 'maxBytes must be a non-negative integer';
 
+type InvalidLimitField = 'maxDepth' | 'maxBytes';
+
+const INVALID_LIMIT_REASON: Record<InvalidLimitField, string> = {
+  maxDepth: INVALID_MAX_DEPTH,
+  maxBytes: INVALID_MAX_BYTES,
+};
+
 /**
  * True when a limit is omitted or is a non-negative integer.
  *
@@ -42,19 +49,13 @@ const isOptionalNonNegativeInteger = (value: unknown): boolean => {
 
 /**
  * Name only the limits that are present and invalid.
+ * Callers pass one or more fields. An empty list is not used.
  *
- * @param depthInvalid - Whether `maxDepth` is set and is not a non-negative integer
- * @param bytesInvalid - Whether `maxBytes` is set and is not a non-negative integer
+ * @param fields - Invalid limit names, `maxDepth` before `maxBytes`
  * @returns Error message for {@link QuietJsonParserOptionsError}
  */
-const invalidLimitsMessage = (depthInvalid: boolean, bytesInvalid: boolean): string => {
-  const reasons: string[] = [];
-  if (depthInvalid) {
-    reasons.push(INVALID_MAX_DEPTH);
-  }
-  if (bytesInvalid) {
-    reasons.push(INVALID_MAX_BYTES);
-  }
+const invalidLimitsMessage = (fields: readonly InvalidLimitField[]): string => {
+  const reasons = fields.map((field) => INVALID_LIMIT_REASON[field]);
   return `Invalid parse limits: ${reasons.join(', ')}.`;
 };
 
@@ -66,14 +67,19 @@ const invalidLimitsMessage = (depthInvalid: boolean, bytesInvalid: boolean): str
  * @throws {@link QuietJsonParserOptionsError} when a set limit is not a non-negative integer
  */
 export const ensureParseLimitOptions = (limits: ParseLimits): void => {
-  const depthInvalid = !isOptionalNonNegativeInteger(limits.maxDepth);
-  const bytesInvalid = !isOptionalNonNegativeInteger(limits.maxBytes);
+  const fields: InvalidLimitField[] = [];
+  if (!isOptionalNonNegativeInteger(limits.maxDepth)) {
+    fields.push('maxDepth');
+  }
+  if (!isOptionalNonNegativeInteger(limits.maxBytes)) {
+    fields.push('maxBytes');
+  }
 
   // A bad limit is a caller bug. Swallowing it as a parse failure would hide a disabled guard.
-  if (!depthInvalid && !bytesInvalid) {
+  if (fields.length === 0) {
     return;
   }
-  throw new QuietJsonParserOptionsError(invalidLimitsMessage(depthInvalid, bytesInvalid));
+  throw new QuietJsonParserOptionsError(invalidLimitsMessage(fields));
 };
 
 /**
