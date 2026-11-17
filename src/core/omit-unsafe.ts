@@ -33,7 +33,7 @@ const isUnsafeConstructorValue = (value: unknown): boolean => {
  * @param value - Property value (used to detect `constructor.prototype`)
  * @returns `true` when the property should be dropped
  */
-const shouldOmitKey = (key: string, value: unknown): boolean => {
+export const shouldOmitKey = (key: string, value: unknown): boolean => {
   if (key === PROTO_KEY || key === PROTOTYPE_KEY) {
     return true;
   }
