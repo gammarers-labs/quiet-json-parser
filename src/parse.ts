@@ -156,6 +156,8 @@ type QuietParseOverload = {
  *
  * Prefer {@link QuietParseOptions} so the API can grow without new positional parameters.
  * The positional `(jsonString, fallback, onErrorOrOptions?)` form remains supported.
+ *
+ * @throws {@link QuietJsonParserOptionsError} when `maxDepth` or `maxBytes` is not a non-negative integer
  */
 export const quietParse: QuietParseOverload = <T>(
   jsonString: string | undefined | null,
