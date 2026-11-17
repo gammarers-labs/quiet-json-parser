@@ -1,4 +1,10 @@
-export { QuietJsonParserError, QuietJsonParserValidateError } from './core/errors';
+export {
+  QuietJsonParserError,
+  QuietJsonParserMaxBytesError,
+  QuietJsonParserMaxDepthError,
+  QuietJsonParserOptionsError,
+  QuietJsonParserValidateError,
+} from './core/errors';
 export type { QuietJsonParserOnError } from './core/on-error';
 export type {
   QuietParseExtraOptions,

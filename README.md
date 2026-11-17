@@ -12,8 +12,9 @@ A small helper to parse and stringify JSON safely by omitting keys commonly used
 - Parse JSON while dropping `__proto__` and `prototype` keys, and dropping `constructor` only when its value is an object that contains `prototype`
 - Stringify values with a replacer that drops the same keys
 - Return a fallback value for nullish, empty, or invalid JSON input, and for stringify failures
+- Optional `maxBytes` and `maxDepth` checks before parse, so oversized or deeply nested input returns `fallback` without parsing
 - Options objects (`QuietParseOptions` / `QuietStringifyOptions`) as the preferred API, with room to grow
-- Optional `onError` callback for parse or stringify failures
+- Optional `onError` callback for limit failures, parse failures, and stringify failures
 - Optional `validate` for `quietParse` (type guard or predicate); mismatch returns `fallback`
 - TypeScript generics; runtime shape is checked only when `validate` is provided
 - Positional `(value, fallback, onError?)` overloads remain available for compatibility
@@ -77,6 +78,35 @@ const fromCircular = quietStringify(circular, {
 });
 ```
 
+For untrusted input, set `maxBytes` and `maxDepth`. Text over either limit is not parsed:
+
+```ts
+import {
+  QuietJsonParserMaxBytesError,
+  QuietJsonParserMaxDepthError,
+  quietParse,
+} from 'quiet-json-parser';
+
+const untrustedJson = '{"name":"ada","enabled":true}';
+
+const fromUntrusted = quietParse(untrustedJson, {
+  fallback,
+  maxBytes: 65536,
+  maxDepth: 20,
+  onError: (error) => {
+    if (error instanceof QuietJsonParserMaxBytesError) {
+      console.error('config payload is too large');
+      return;
+    }
+    if (error instanceof QuietJsonParserMaxDepthError) {
+      console.error('config nesting is too deep');
+      return;
+    }
+    console.error('failed to parse config', error);
+  },
+});
+```
+
 Pass `validate` to check the sanitized parse result at runtime. On mismatch, `quietParse` returns `fallback` and calls `onError` with `QuietJsonParserValidateError`:
 
 ```ts
@@ -129,13 +159,17 @@ quietStringify(circular, '{}', (error) => {
 
 | Option | Type | Description |
 | --- | --- | --- |
-| `fallback` | `T` | Value returned when input is missing/empty, parsing fails, or `validate` rejects the value. |
-| `validate` | `(value: unknown) => boolean` (optional) | Type guard or predicate run on the sanitized parse result. Schema libraries can wrap `safeParse`. On `false`, `onError` receives `QuietJsonParserValidateError` and the function returns `fallback`. If the function throws, the thrown value is passed to `onError`. Not called for nullish/empty input or `JSON.parse` failures. |
-| `onError` | `QuietJsonParserOnError` (optional) | Called when `JSON.parse` throws, when `validate` throws, or with `QuietJsonParserValidateError` when `validate` returns `false`. Not called for nullish/empty input. |
+| `fallback` | `T` | Value returned when input is missing/empty, a limit is exceeded, parsing fails, or `validate` rejects the value. |
+| `maxBytes` | `number` (optional) | Maximum UTF-8 byte length of `jsonString`. Checked before `JSON.parse`. When the text is larger, parsing is skipped, `onError` receives `QuietJsonParserMaxBytesError`, and the function returns `fallback`. Omit for no size limit. Not applied to nullish or empty input. |
+| `maxDepth` | `number` (optional) | Maximum nesting of objects and arrays. A primitive is depth 0. `{}` and `[]` are depth 1. Braces inside strings do not count. Checked before `JSON.parse`. When nesting is deeper, parsing is skipped, `onError` receives `QuietJsonParserMaxDepthError`, and the function returns `fallback`. The reported depth is the first level past the limit. Omit for no depth limit. Not applied to nullish or empty input. |
+| `validate` | `(value: unknown) => boolean` (optional) | Type guard or predicate run on the sanitized parse result. Schema libraries can wrap `safeParse`. On `false`, `onError` receives `QuietJsonParserValidateError` and the function returns `fallback`. If the function throws, the thrown value is passed to `onError`. Not called for nullish/empty input, `JSON.parse` failures, or limit failures. |
+| `onError` | `QuietJsonParserOnError` (optional) | Called with `QuietJsonParserMaxBytesError` or `QuietJsonParserMaxDepthError` when a limit is exceeded, when `JSON.parse` throws, when `validate` throws, or with `QuietJsonParserValidateError` when `validate` returns `false`. Not called for nullish or empty input. Not called when `quietParse` throws `QuietJsonParserOptionsError`. |
 
-`quietParse(jsonString, fallback, onErrorOrOptions?)` remains supported. The third argument may be an `onError` callback or `{ validate?, onError? }` (`QuietParseExtraOptions`).
+`quietParse(jsonString, fallback, onErrorOrOptions?)` remains supported. The third argument may be an `onError` callback or `{ validate?, onError?, maxDepth?, maxBytes? }` (`QuietParseExtraOptions`).
 
-Returns the parsed value as `T`, or `fallback`. Runtime shape is checked only when `validate` is provided. When inspecting errors, check `QuietJsonParserValidateError` before `QuietJsonParserError`.
+`maxDepth` and `maxBytes` must be non-negative integers when set. Otherwise `quietParse` throws `QuietJsonParserOptionsError` and does not call `onError`.
+
+Returns the parsed value as `T`, or `fallback`. Runtime shape is checked only when `validate` is provided. When inspecting `onError`, check `QuietJsonParserMaxBytesError`, `QuietJsonParserMaxDepthError`, and `QuietJsonParserValidateError` before `QuietJsonParserError`.
 
 `quietStringify(value, options)` (preferred)
 
