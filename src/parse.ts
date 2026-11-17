@@ -15,8 +15,18 @@ import type { QuietJsonParserOnError } from './core/on-error';
 export type QuietParseValidate<T> = ((value: unknown) => value is T) | ((value: unknown) => boolean);
 
 /**
+ * `JSON.parse` reviver. `this` is the object that holds the property.
+ * Return `undefined` to drop that property. The root call uses the key `""`.
+ *
+ * @param key - Property name, or `""` for the root value
+ * @param value - Parsed property value, with nested values already revived
+ * @returns The replacement value, or `undefined` to omit the property
+ */
+export type QuietParseReviver = (this: unknown, key: string, value: unknown) => unknown;
+
+/**
  * Settings for `quietParse`. Prefer this object form so future options
- * (reviver, omit keys, and similar) can be added without new positional args.
+ * (omit keys and similar) can be added without new positional args.
  *
  * @typeParam T - Expected result type
  */
@@ -43,13 +53,21 @@ export interface QuietParseOptions<T> {
    */
   readonly maxDepth?: number;
   /**
+   * Passed to `JSON.parse` before unsafe keys are removed.
+   * The reviver may see `__proto__`, `prototype`, and an unsafe `constructor`.
+   * `validate` receives the value after those keys are removed.
+   * A throw is passed to `onError` and `fallback` is returned.
+   */
+  readonly reviver?: QuietParseReviver;
+  /**
    * Runtime check run on the sanitized parse result.
    * On `false`, `onError` receives {@link QuietJsonParserValidateError} and `fallback` is returned.
    * If this function throws, the thrown value is passed to `onError`.
+   * Not called when parsing is skipped or when `reviver` throws.
    */
   readonly validate?: QuietParseValidate<T>;
   /**
-   * Called when a size or depth limit is exceeded, when `JSON.parse` throws, when `validate` throws,
+   * Called when a size or depth limit is exceeded, when `JSON.parse` or `reviver` throws, when `validate` throws,
    * or when `validate` returns `false`. Not called for nullish or empty input.
    * Not called when `maxDepth` or `maxBytes` is not a non-negative integer.
    * See {@link QuietJsonParserOnError}.
@@ -117,7 +135,7 @@ type QuietParseOverload = {
    * @typeParam T - Expected result type
    * @param jsonString - JSON text to parse, or nullish/empty to skip parsing
    * @param fallback - Value returned for missing input, an over-limit payload, parse errors, or validation failure
-   * @param onErrorOrOptions - Optional `onError` callback, or options with `validate`, limits, and `onError`
+   * @param onErrorOrOptions - Optional `onError` callback, or options with `validate`, limits, `reviver`, and `onError`
    * @returns The parsed value as `T`, or `fallback`
    * @throws {@link QuietJsonParserOptionsError} when `maxDepth` or `maxBytes` is not a non-negative integer
    */
@@ -133,7 +151,8 @@ type QuietParseOverload = {
  * (`__proto__`, `prototype`, and `constructor` only when it contains `prototype`).
  * Returns `fallback` when the input is nullish/empty, a size or depth limit is exceeded,
  * parsing fails, or `validate` rejects the parsed value. `maxBytes` and `maxDepth`, when set,
- * are enforced before `JSON.parse`. Shape is checked at runtime only when `validate` is set.
+ * are enforced before `JSON.parse`. An optional `reviver` is passed to `JSON.parse`, and unsafe keys
+ * are removed from its result before `validate`. Shape is checked at runtime only when `validate` is set.
  *
  * Prefer {@link QuietParseOptions} so the API can grow without new positional parameters.
  * The positional `(jsonString, fallback, onErrorOrOptions?)` form remains supported.
@@ -143,7 +162,7 @@ export const quietParse: QuietParseOverload = <T>(
   fallbackOrOptions: T | QuietParseOptions<T>,
   onErrorOrOptions?: QuietJsonParserOnError | QuietParseExtraOptions<T>,
 ): T => {
-  const { fallback, validate, onError, maxDepth, maxBytes } = toParseOptions(
+  const { fallback, validate, onError, maxDepth, maxBytes, reviver } = toParseOptions(
     fallbackOrOptions,
     onErrorOrOptions,
   );
@@ -157,7 +176,8 @@ export const quietParse: QuietParseOverload = <T>(
   try {
     // Size and depth are enforced before parse so an over-limit payload is never parsed.
     ensureJsonWithinLimits(jsonString, { maxDepth, maxBytes });
-    const parsed: unknown = JSON.parse(jsonString);
+    // Revive during parse, then drop unsafe keys so `validate` does not see them.
+    const parsed: unknown = JSON.parse(jsonString, reviver);
     sanitized = omitUnsafeDeep(parsed);
   } catch (error) {
     onError?.(error);

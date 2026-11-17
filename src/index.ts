@@ -9,8 +9,13 @@ export type { QuietJsonParserOnError } from './core/on-error';
 export type {
   QuietParseExtraOptions,
   QuietParseOptions,
+  QuietParseReviver,
   QuietParseValidate,
 } from './parse';
 export { quietParse } from './parse';
-export type { QuietStringifyOptions } from './stringify';
+export type {
+  QuietStringifyExtraOptions,
+  QuietStringifyOptions,
+  QuietStringifyReplacer,
+} from './stringify';
 export { quietStringify } from './stringify';
